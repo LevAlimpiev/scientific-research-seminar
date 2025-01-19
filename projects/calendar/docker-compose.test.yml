@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  unit-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - TEST_TYPE=unit
+    command: go test -v ./tests/ut/...
+
+  functional-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - TEST_TYPE=functional
+      - API_URL=http://app:8080
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    command: go test -v ./tests/ft/...
+    depends_on:
+      - app
+      - db
+
+  app:
+    build: .
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/calendar?sslmode=disable
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=calendar
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  test-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=calendar_test
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql

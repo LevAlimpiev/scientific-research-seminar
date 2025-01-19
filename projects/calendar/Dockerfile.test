@@ -1,0 +1,13 @@
+FROM golang:1.21-alpine
+
+WORKDIR /app
+
+# Установка зависимостей
+COPY go.mod ./
+RUN go mod download
+
+# Копирование исходного кода
+COPY . .
+
+# Запуск тестов
+CMD ["go", "test", "-v", "./..."]
