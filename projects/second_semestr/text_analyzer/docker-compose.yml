@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  text-analyzer:
+    build: .
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/text_analyzer
+    depends_on:
+      - db
+    mem_limit: 8g
+    memswap_limit: 8g
+    networks:
+      - app-network
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/text_analyzer_test
+    depends_on:
+      - db
+    mem_limit: 8g
+    memswap_limit: 8g
+    networks:
+      - app-network
+
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=text_analyzer
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    external: true
+    name: scrapper_default
+
+volumes:
+  postgres_data: 
