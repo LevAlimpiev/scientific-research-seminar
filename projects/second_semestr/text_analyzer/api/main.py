@@ -7,7 +7,7 @@ import requests
 import httpx
 from fastapi.middleware.cors import CORSMiddleware
 
-from internal.database import get_db, init_db, save_article, SessionLocal
+from internal.database import get_db, init_db, save_article, SessionLocal, get_all_articles
 from internal.keyword_extractor import KeywordExtractor
 from internal.scrapper_client import ScrapperClient
 from config.config import get_settings
@@ -40,6 +40,14 @@ class ArticleResponse(BaseModel):
     title: str
     content: str
     keywords: List[KeywordResponse]
+
+class MockArticleRequest(BaseModel):
+    topic: str = "Многопоточное программирование"  # Опциональная тема для генерации статьи по C++, значение по умолчанию
+    
+    class Config:
+        # Разрешаем создание модели с пустыми значениями
+        validate_assignment = True
+        extra = "ignore"
 
 @app.on_event("startup")
 async def startup_event():
@@ -98,6 +106,74 @@ async def analyze_article(article_id: int) -> Dict[str, Any]:
     except httpx.HTTPError as e:
         logger.error(f"Ошибка при получении статьи: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ошибка при получении статьи: {str(e)}")
+
+@app.post("/mock-article")
+@app.get("/mock-article")
+async def create_mock_article() -> Dict[str, Any]:
+    """
+    Генерирует короткую мок-статью по C++ без обращения к базе данных.
+    Просто возвращает захардкоженные данные.
+    """
+    # Хардкодим все данные
+    topic = "Многопоточное программирование"
+    title = f"C++: {topic}"
+    content = """C++ предоставляет мощные инструменты для разработки многопоточных приложений.
+Стандартная библиотека C++11 и выше включает классы std::thread, std::mutex, std::condition_variable 
+и другие примитивы синхронизации, которые позволяют эффективно создавать параллельные программы."""
+    
+    # Захардкоженные ключевые слова
+    keywords = [
+        {"keyword": "C++", "score": 10},
+        {"keyword": "многопоточность", "score": 8},
+        {"keyword": "std::thread", "score": 7},
+        {"keyword": "std::mutex", "score": 6},
+        {"keyword": "синхронизация", "score": 5}
+    ]
+    
+    return {
+        "status": "success",
+        "article_id": 1,
+        "title": title,
+        "content": content,
+        "keywords": keywords
+    }
+
+@app.get("/articles")
+async def get_articles() -> Dict[str, Any]:
+    """
+    Возвращает все статьи из базы данных
+    """
+    try:
+        logger.info("Получение всех статей из базы данных")
+        
+        # Получаем все статьи из базы данных
+        articles = get_all_articles(db)
+        
+        # Формируем ответ
+        result = []
+        for article in articles:
+            article_data = {
+                "id": article.article_id,
+                "title": article.title,
+                "content": article.content,
+                "keywords": [
+                    {"keyword": kw.keyword, "score": kw.score}
+                    for kw in article.keywords
+                ]
+            }
+            result.append(article_data)
+        
+        logger.info(f"Получено {len(result)} статей из базы данных")
+        
+        return {
+            "status": "success",
+            "count": len(result),
+            "articles": result
+        }
+    
+    except Exception as e:
+        logger.error(f"Ошибка при получении статей: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении статей: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

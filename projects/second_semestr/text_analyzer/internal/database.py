@@ -47,3 +47,7 @@ def save_article(db, article_id: int, title: str, content: str, keywords: List[D
     except Exception as e:
         db.rollback()
         raise e
+
+def get_all_articles(db):
+    """Возвращает все статьи из базы данных с их ключевыми словами"""
+    return db.query(Article).all()
